@@ -1,32 +1,192 @@
-# Prerequisites
-*.d
+#include <iostream>
+#include <cstdlib>
+#include <ctime>
+#include <conio.h>
+#include <windows.h>
 
-# Compiled Object files
-*.slo
-*.lo
-*.o
-*.obj
+using namespace std;
 
-# Precompiled Headers
-*.gch
-*.pch
+const int BOARD_WIDTH = 10;
+const int BOARD_HEIGHT = 20;
 
-# Compiled Dynamic libraries
-*.so
-*.dylib
-*.dll
+char board[BOARD_HEIGHT][BOARD_WIDTH] = { ' ' };
 
-# Fortran module files
-*.mod
-*.smod
+struct Tetromino {
+    int x, y;
+    char shape;
+};
 
-# Compiled Static libraries
-*.lai
-*.la
-*.a
-*.lib
+Tetromino currentTetromino;
 
-# Executables
-*.exe
-*.out
-*.app
+void InitializeBoard() {
+    for (int i = 0; i < BOARD_HEIGHT; i++) {
+        for (int j = 0; j < BOARD_WIDTH; j++) {
+            board[i][j] = ' ';
+        }
+    }
+}
+
+void DrawBoard() {
+    system("cls");
+    for (int i = 0; i < BOARD_HEIGHT; i++) {
+        for (int j = 0; j < BOARD_WIDTH; j++) {
+            cout << board[i][j];
+        }
+        cout << endl;
+    }
+}
+
+bool IsCollision(int x, int y) {
+    if (x < 0 || x >= BOARD_WIDTH || y < 0 || y >= BOARD_HEIGHT)
+        return true;
+    if (board[y][x] != ' ')
+        return true;
+    return false;
+}
+
+void PlaceTetromino() {
+    for (int i = 0; i < 4; i++) {
+        int x = currentTetromino.x + currentTetromino.shape[i] % 2;
+        int y = currentTetromino.y + currentTetromino.shape[i] / 2;
+        board[y][x] = '*';
+    }
+}
+
+void RemoveTetromino() {
+    for (int i = 0; i < 4; i++) {
+        int x = currentTetromino.x + currentTetromino.shape[i] % 2;
+        int y = currentTetromino.y + currentTetromino.shape[i] / 2;
+        board[y][x] = ' ';
+    }
+}
+
+void RotateTetromino() {
+    RemoveTetromino();
+
+    int tempShape[4];
+    for (int i = 0; i < 4; i++) {
+        tempShape[i] = currentTetromino.shape[i];
+        currentTetromino.shape[i] = currentTetromino.shape[i] % 2 * 2 + currentTetromino.shape[i] / 2;
+    }
+
+    if (IsCollision(currentTetromino.x, currentTetromino.y)) {
+        for (int i = 0; i < 4; i++) {
+            currentTetromino.shape[i] = tempShape[i];
+        }
+    }
+
+    PlaceTetromino();
+}
+
+void MoveTetromino(int dx, int dy) {
+    RemoveTetromino();
+
+    if (!IsCollision(currentTetromino.x + dx, currentTetromino.y + dy)) {
+        currentTetromino.x += dx;
+        currentTetromino.y += dy;
+    }
+
+    PlaceTetromino();
+}
+
+bool IsRowComplete(int row) {
+    for (int j = 0; j < BOARD_WIDTH; j++) {
+        if (board[row][j] == ' ')
+            return false;
+    }
+    return true;
+}
+
+void RemoveRow(int row) {
+    for (int i = row; i > 0; i--) {
+        for (int j = 0; j < BOARD_WIDTH; j++) {
+            board[i][j] = board[i - 1][j];
+        }
+    }
+    for (int j = 0; j < BOARD_WIDTH; j++) {
+        board[0][j] = ' ';
+    }
+}
+
+void ProcessRows() {
+    for (int i = 0; i < BOARD_HEIGHT; i++) {
+        if (IsRowComplete(i)) {
+            RemoveRow(i);
+        }
+    }
+}
+
+bool IsGameOver() {
+    for (int j = 0; j < BOARD_WIDTH; j++) {
+        if (board[0][j] != ' ')
+            return true;
+    }
+    return false;
+}
+
+void GenerateTetromino() {
+    int shapes[7][4] = {
+        {1, 3, 5, 7}, // I
+        {2, 4, 5, 7}, // Z
+        {3, 5, 4, 6}, // S
+        {3, 5, 4, 7}, // T
+        {2, 3, 5, 7}, // L
+        {3, 5, 7, 6}, // J
+        {2, 3, 4, 5}  // O
+    };
+
+    srand(time(0));
+    int randomIndex = rand() % 7;
+
+    currentTetromino.x = BOARD_WIDTH / 2;
+    currentTetromino.y = 0;
+    for (int i = 0; i < 4; i++) {
+        currentTetromino.shape[i] = shapes[randomIndex][i];
+    }
+}
+
+int main() {
+    InitializeBoard();
+    GenerateTetromino();
+
+    while (true) {
+        DrawBoard();
+
+        if (_kbhit()) {
+            char key = _getch();
+            switch (key) {
+            case 'a':
+                MoveTetromino(-1, 0);
+                break;
+            case 'd':
+                MoveTetromino(1, 0);
+                break;
+            case 's':
+                MoveTetromino(0, 1);
+                break;
+            case 'w':
+                RotateTetromino();
+                break;
+            case 'q':
+                return 0;
+            }
+        }
+
+        if (!IsCollision(currentTetromino.x, currentTetromino.y + 1)) {
+            MoveTetromino(0, 1);
+        }
+        else {
+            PlaceTetromino();
+            ProcessRows();
+            if (IsGameOver()) {
+                cout << "Game Over!" << endl;
+                break;
+            }
+            GenerateTetromino();
+        }
+
+        Sleep(500);
+    }
+
+    return 0;
+}
